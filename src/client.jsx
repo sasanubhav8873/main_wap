@@ -106,6 +106,16 @@ const INITIAL_PROJECTS = [
   },
 ];
 
+function CoinsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="6" />
+      <circle cx="16" cy="16" r="6" />
+      <circle cx="12" cy="12" r="6" />
+    </svg>
+  );
+}
+
 const STATUS_META = {
   "In Progress":   { cls: "cd-badge--blue",    label: "In Progress"   },
   "Under Review":  { cls: "cd-badge--yellow",   label: "Under Review"  },
@@ -119,6 +129,7 @@ const NAV_ITEMS = [
   { icon: <VaultIcon />,    label: "Escrow Vault",id: "vault"     },
   { icon: <ActivityIcon />, label: "Activity",    id: "activity"  },
   { icon: <MessageIcon />,  label: "Messages",    id: "messages", badge: 3 },
+  { icon: <CoinsIcon />,    label: "Buy Tokens",  id: "buy_tokens" },
   { icon: <SettingsIcon />, label: "Settings",    id: "settings"  },
 ];
 
@@ -130,7 +141,12 @@ export default function ClientDashboard({ name = "Client", onSignOut }) {
   const [showModal, setShowModal]       = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const [projects, setProjects]         = useState(INITIAL_PROJECTS);
+  const [projects, setProjects]         = useState(() => {
+    const saved = localStorage.getItem("customClientProjects");
+    const parsed = saved ? JSON.parse(saved) : [];
+    return [...parsed, ...INITIAL_PROJECTS];
+  });
+  const [walletBalance, setWalletBalance] = useState(5000); // 5000 Tokens initially
 
   const filters = ["All", "In Progress", "Under Review", "Pending Start", "Completed"];
 
@@ -193,13 +209,27 @@ export default function ClientDashboard({ name = "Client", onSignOut }) {
           </nav>
 
           {/* Vault teaser */}
-          <div className="cd-vault-teaser">
-            <div className="cd-vt-top">
-              <YieldIcon />
-              <span className="cd-vt-label">Yield Earned</span>
+          <div className="cd-vault-teaser" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <div className="cd-vt-top" style={{ marginBottom: 4 }}>
+                <YieldIcon />
+                <span className="cd-vt-label">Yield Earned</span>
+              </div>
+              <div className="cd-vt-amount">{totalYield}</div>
             </div>
-            <div className="cd-vt-amount">{totalYield}</div>
-            <p className="cd-vt-sub">Funds working while locked in escrow</p>
+            
+            <div style={{ height: 1, background: "var(--border)", opacity: 0.2 }} />
+            
+            <div>
+              <div className="cd-vt-top" style={{ marginBottom: 4 }}>
+                <CoinsIcon />
+                <span className="cd-vt-label">Wallet Balance</span>
+              </div>
+              <div className="cd-vt-amount" style={{ color: "var(--blue)" }}>
+                {walletBalance.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} T
+              </div>
+            </div>
+            <p className="cd-vt-sub" style={{ marginTop: 2 }}>Secure multi-sig lockers active</p>
           </div>
 
           {/* User */}
@@ -250,14 +280,18 @@ export default function ClientDashboard({ name = "Client", onSignOut }) {
             <h1 className="cd-topbar-title">Welcome back, {firstName}</h1>
           </div>
           <div className="cd-topbar-right">
-            <button className="cd-icon-btn">
-              <BellIcon />
-              <span className="cd-notif-dot" />
-            </button>
-            <button className="cd-primary-btn" onClick={() => setShowModal(true)}>
-              <PlusIcon />
-              New Project
-            </button>
+            {activeNav !== "buy_tokens" && (
+              <>
+                <button className="cd-icon-btn">
+                  <BellIcon />
+                  <span className="cd-notif-dot" />
+                </button>
+                <button className="cd-primary-btn" onClick={() => setShowModal(true)}>
+                  <PlusIcon />
+                  New Project
+                </button>
+              </>
+            )}
           </div>
         </header>
 
@@ -398,6 +432,10 @@ export default function ClientDashboard({ name = "Client", onSignOut }) {
           <MessagesPage name={name} />
         )}
 
+        {activeNav === "buy_tokens" && (
+          <BuyTokensPage walletBalance={walletBalance} setWalletBalance={setWalletBalance} />
+        )}
+
         {activeNav === "settings" && (
           <SettingsPage name={name} />
         )}
@@ -405,7 +443,28 @@ export default function ClientDashboard({ name = "Client", onSignOut }) {
 
       {/* ── New Project Modal ── */}
       {showModal && <NewProjectModal onClose={() => setShowModal(false)} onAddProject={(newProject) => {
-        setProjects(prev => [newProject, ...prev]);
+        setProjects(prev => {
+          const updated = [newProject, ...prev];
+          const customOnly = updated.filter(p => !INITIAL_PROJECTS.some(ip => ip.id === p.id));
+          localStorage.setItem("customClientProjects", JSON.stringify(customOnly));
+          return updated;
+        });
+
+        // Sync to freelancer explore storage
+        const exploreItem = {
+          id: newProject.id,
+          title: newProject.title,
+          client: name || "Client Workspace",
+          budget: newProject.budget,
+          duration: newProject.duration || "4 weeks",
+          skills: newProject.skills || "React · Escrow Protection",
+          isCustom: true
+        };
+
+        const savedExplore = localStorage.getItem("customExploreProjects");
+        const parsedExplore = savedExplore ? JSON.parse(savedExplore) : [];
+        const updatedExplore = [exploreItem, ...parsedExplore];
+        localStorage.setItem("customExploreProjects", JSON.stringify(updatedExplore));
       }} />}
     </div>
   );
@@ -592,12 +651,13 @@ function NewProjectModal({ onClose, onAddProject }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     title: "",
-    freelancer: "",
     description: "",
     due: "",
     budget: "",
     escrowed: "",
-    milestone: ""
+    milestone: "",
+    skills: "",
+    duration: ""
   });
 
   const handleChange = (e) => {
@@ -608,8 +668,8 @@ function NewProjectModal({ onClose, onAddProject }) {
     const newProject = {
       id: Date.now(),
       title: formData.title || "New Contract",
-      freelancer: formData.freelancer || "Unknown",
-      avatar: (formData.freelancer || "U").substring(0, 2).toUpperCase(),
+      freelancer: "Pending Assignment",
+      avatar: "PA",
       budget: formData.budget ? `${formData.budget} Tokens` : "0 Tokens",
       escrowed: formData.escrowed ? `${formData.escrowed} Tokens` : "0 Tokens",
       due: formData.due || "TBD",
@@ -617,6 +677,8 @@ function NewProjectModal({ onClose, onAddProject }) {
       milestone: formData.milestone || "Initial Setup",
       progress: 0,
       yieldEarned: "0 Tokens",
+      skills: formData.skills ? formData.skills.split(",").map(s => s.trim()).join(" · ") : "React · Escrow Protection",
+      duration: formData.duration || "4 weeks",
     };
     onAddProject?.(newProject);
     onClose();
@@ -649,12 +711,16 @@ function NewProjectModal({ onClose, onAddProject }) {
               <input className="sr-input" name="title" value={formData.title} onChange={handleChange} placeholder="e.g. Mobile App Redesign" />
             </div>
             <div className="sr-field-group">
-              <label className="sr-field-label">Freelancer Name or Email</label>
-              <input className="sr-input" name="freelancer" value={formData.freelancer} onChange={handleChange} placeholder="freelancer@example.com" />
-            </div>
-            <div className="sr-field-group">
               <label className="sr-field-label">Project Description</label>
               <textarea className="sr-input cd-textarea" name="description" value={formData.description} onChange={handleChange} placeholder="Describe the scope of work..." />
+            </div>
+            <div className="sr-field-group">
+              <label className="sr-field-label">Required Skills (Optional)</label>
+              <input className="sr-input" name="skills" value={formData.skills} onChange={handleChange} placeholder="e.g. React, Figma, Mobile UI" />
+            </div>
+            <div className="sr-field-group">
+              <label className="sr-field-label">Estimated Duration (Optional)</label>
+              <input className="sr-input" name="duration" value={formData.duration} onChange={handleChange} placeholder="e.g. 4 weeks" />
             </div>
             <div className="sr-field-group">
               <label className="sr-field-label">Deadline</label>
@@ -691,6 +757,8 @@ function NewProjectModal({ onClose, onAddProject }) {
               <div className="cd-confirm-row"><span>Budget</span><strong>{formData.budget || "0"} Tokens</strong></div>
               <div className="cd-confirm-row"><span>Escrow Deposit</span><strong>{formData.escrowed || "0"} Tokens</strong></div>
               <div className="cd-confirm-row"><span>Milestone</span><strong>{formData.milestone || "Initial Setup"}</strong></div>
+              <div className="cd-confirm-row"><span>Required Skills</span><strong>{formData.skills || "React · Escrow Protection"}</strong></div>
+              <div className="cd-confirm-row"><span>Duration</span><strong>{formData.duration || "4 weeks"}</strong></div>
             </div>
             <div className="cd-yield-notice">
               <ShieldIcon />
@@ -1848,3 +1916,197 @@ function SettingsPage({ name }) {
     </motion.div>
   );
 }
+
+/* ────────────────────────────────────────────────────────── */
+/*                       BUY TOKENS PAGE                      */
+/* ────────────────────────────────────────────────────────── */
+export function BuyTokensPage({ walletBalance, setWalletBalance }) {
+  const [processing, setProcessing] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [successToast, setSuccessToast] = useState("");
+  const [purchaseAmount, setPurchaseAmount] = useState(0);
+
+  const steps = [
+    "Connecting with secure UPI/Bank node...",
+    "Authorizing smart contract vault...",
+    "Securing ledger transactions with multi-sig signature...",
+    "Depositing custom tokens to your workspace locker..."
+  ];
+
+  useEffect(() => {
+    if (processing) {
+      const interval = setInterval(() => {
+        setLoadingStep(s => {
+          if (s >= steps.length - 1) {
+            clearInterval(interval);
+            return s;
+          }
+          return s + 1;
+        });
+      }, 700);
+      
+      const timeout = setTimeout(() => {
+        setProcessing(false);
+        setWalletBalance(prev => prev + purchaseAmount);
+        setSuccessToast(`Successfully purchased and credited ${purchaseAmount.toLocaleString()} Tokens!`);
+        setTimeout(() => setSuccessToast(""), 4000);
+      }, 3000);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [processing, purchaseAmount]);
+
+  const triggerPurchase = (amount) => {
+    setPurchaseAmount(amount);
+    setLoadingStep(0);
+    setProcessing(true);
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      transition={{ duration: 0.4 }}
+      className="cd-vault-container"
+    >
+      <div className="cd-panel-head cd-panel-head--flush" style={{ marginBottom: 24 }}>
+        <div>
+          <h2 className="cd-panel-title">Tokens Subscriptions Center</h2>
+          <p className="cd-panel-sub">Convert traditional currency to custom platform Tokens monthly at our discounted tier pools</p>
+        </div>
+      </div>
+
+      <div className="cd-panel" style={{ margin: 0 }}>
+        <div className="cd-panel-head cd-panel-head--flush" style={{ marginBottom: 20 }}>
+          <h3 className="cd-panel-title">Available Subscription Pools</h3>
+          <p className="cd-panel-sub">Exchange rates are dynamically calculated at 10 Tokens = 1,000 INR (1 Token = 100 INR)</p>
+        </div>
+
+        <div className="cd-tier-list">
+          <div className="cd-sub-card">
+            <span className="cd-sub-discount">Save 10%</span>
+            <h4 className="cd-sub-title">Starter Pool</h4>
+            <div className="cd-sub-price">
+              <strong className="cd-sub-price-num">₹45,000</strong>
+              <span className="cd-sub-price-den">/ month</span>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--blue)", display: "flex", alignItems: "center", gap: 4 }}>
+              <CoinsIcon /> 500 Tokens / month
+            </div>
+            <ul className="cd-sub-features">
+              <li className="cd-sub-feature-item">
+                <Check size={12} />
+                <span>Auto-credit monthly</span>
+              </li>
+              <li className="cd-sub-feature-item">
+                <Check size={12} />
+                <span>Locked APY compounding</span>
+              </li>
+            </ul>
+            <button 
+              className="sr-cta-btn" 
+              style={{ height: 34, fontSize: 12 }} 
+              onClick={() => triggerPurchase(500)}
+            >
+              Subscribe &amp; Convert
+            </button>
+          </div>
+
+          <div className="cd-sub-card cd-sub-card--premium">
+            <span className="cd-sub-tag">Popular</span>
+            <span className="cd-sub-discount" style={{ background: "rgba(91, 140, 255, 0.16)", color: "var(--blue)" }}>Save 15%</span>
+            <h4 className="cd-sub-title">Growth Pool</h4>
+            <div className="cd-sub-price">
+              <strong className="cd-sub-price-num">₹1,70,000</strong>
+              <span className="cd-sub-price-den">/ month</span>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--green)", display: "flex", alignItems: "center", gap: 4 }}>
+              <CoinsIcon /> 2,000 Tokens / month
+            </div>
+            <ul className="cd-sub-features">
+              <li className="cd-sub-feature-item">
+                <Check size={12} />
+                <span>Advanced APY perks (+0.5%)</span>
+              </li>
+              <li className="cd-sub-feature-item">
+                <Check size={12} />
+                <span>Priority review support</span>
+              </li>
+            </ul>
+            <button 
+              className="sr-cta-btn" 
+              style={{ height: 34, fontSize: 12, background: "var(--blue)" }} 
+              onClick={() => triggerPurchase(2000)}
+            >
+              Subscribe &amp; Convert
+            </button>
+          </div>
+
+          <div className="cd-sub-card">
+            <span className="cd-sub-discount">Save 20%</span>
+            <h4 className="cd-sub-title">Enterprise Pool</h4>
+            <div className="cd-sub-price">
+              <strong className="cd-sub-price-num">₹8,00,000</strong>
+              <span className="cd-sub-price-den">/ month</span>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#a78bfa", display: "flex", alignItems: "center", gap: 4 }}>
+              <CoinsIcon /> 10,000 Tokens / month
+            </div>
+            <ul className="cd-sub-features">
+              <li className="cd-sub-feature-item">
+                <Check size={12} />
+                <span>Bespoke contract design</span>
+              </li>
+              <li className="cd-sub-feature-item">
+                <Check size={12} />
+                <span>100% FDIC compliance</span>
+              </li>
+            </ul>
+            <button 
+              className="sr-cta-btn" 
+              style={{ height: 34, fontSize: 12 }} 
+              onClick={() => triggerPurchase(10000)}
+            >
+              Subscribe &amp; Convert
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {processing && (
+        <div className="cd-modal-overlay" style={{ animation: "fadeIn 0.25s ease both", zIndex: 1000 }}>
+          <div className="cd-modal" style={{ maxWidth: 400, textAlign: "center", padding: "36px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div className="cd-loading-spinner" style={{ width: 48, height: 48, borderWidth: 3, color: "var(--blue)" }} />
+            </div>
+            <div>
+              <h3 className="cd-panel-title" style={{ fontSize: 17, marginBottom: 6 }}>Processing Secure Exchange</h3>
+              <p style={{ fontSize: 12.5, color: "var(--text-2)", minHeight: 36 }}>{steps[loadingStep]}</p>
+            </div>
+            <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden", position: "relative" }}>
+              <div style={{ 
+                height: "100%", 
+                width: `${((loadingStep + 1) / steps.length) * 100}%`, 
+                background: "var(--blue)", 
+                borderRadius: 99,
+                transition: "width 0.4s ease"
+              }} />
+            </div>
+            <span style={{ fontSize: 11, color: "var(--text-2)", opacity: 0.6 }}>Locked via 256-bit AES Multi-sig Protocol</span>
+          </div>
+        </div>
+      )}
+
+      {successToast && (
+        <div className="cd-toast-success" style={{ animation: "fadeSlideUp 0.3s ease both" }}>
+          <Check size={16} />
+          <span>{successToast}</span>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+

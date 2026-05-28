@@ -1135,3 +1135,122 @@
   backdrop-filter: blur(10px);
 }
 
+/* Balances & Buy Tokens Page Styles */
+.cd-tokens-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .cd-tokens-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cd-tier-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.cd-sub-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow: hidden;
+}
+
+.cd-sub-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--blue-border);
+  box-shadow: 0 10px 25px rgba(91, 140, 255, 0.08);
+}
+
+.cd-sub-card--premium {
+  background: linear-gradient(135deg, var(--surface-2) 0%, rgba(91, 140, 255, 0.04) 100%);
+  border-color: rgba(91, 140, 255, 0.25);
+}
+
+.cd-sub-card--premium:hover {
+  border-color: var(--blue);
+  box-shadow: 0 12px 30px rgba(91, 140, 255, 0.15);
+}
+
+.cd-sub-tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--blue-glow);
+  color: var(--blue);
+  border: 1px solid var(--blue-border);
+  border-radius: 99px;
+  padding: 2px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cd-sub-discount {
+  background: var(--green-glow);
+  color: var(--green);
+  border: 1px solid rgba(79, 175, 143, 0.2);
+  border-radius: 99px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 8px;
+  display: inline-block;
+}
+
+.cd-sub-title {
+  font-family: var(--font-sora);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.cd-sub-price {
+  margin: 6px 0;
+}
+
+.cd-sub-price-num {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-1);
+}
+
+.cd-sub-price-den {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-left: 4px;
+}
+
+.cd-sub-features {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+  list-style: none;
+}
+
+.cd-sub-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.cd-sub-feature-item svg {
+  color: var(--green);
+}
+

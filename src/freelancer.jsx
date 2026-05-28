@@ -540,7 +540,7 @@ function ProjectCard({ p, delay }) {
   );
 }
 
-function ExploreProjectCard({ p, delay }) {
+function ExploreProjectCard({ p, delay, onApply, isApplied }) {
   const [hov, setHov] = useState(false);
 
   return (
@@ -549,7 +549,7 @@ function ExploreProjectCard({ p, delay }) {
       onMouseLeave={() => setHov(false)}
       style={{
         background: G.surface,
-        border: `1px solid ${hov ? G.blueBorder : G.border}`,
+        border: `1px solid ${isApplied ? G.greenBorder : (hov ? G.blueBorder : G.border)}`,
         borderRadius: 16,
         padding: "20px 22px",
         display: "flex",
@@ -569,7 +569,7 @@ function ExploreProjectCard({ p, delay }) {
             <span style={{ color: G.text3 }}>Client: </span>{p.client}
           </div>
         </div>
-        <Badge color="green">Open</Badge>
+        <Badge color={isApplied ? "green" : "green"}>{isApplied ? "Claimed" : "Open"}</Badge>
       </div>
 
       <div style={{
@@ -593,16 +593,38 @@ function ExploreProjectCard({ p, delay }) {
 
       <div style={{ fontSize: 12, color: G.text2 }}>{p.skills}</div>
 
-      <button style={{
-        alignSelf: "flex-start",
-        padding: "8px 14px",
-        borderRadius: 8,
-        border: `1px solid ${G.blueBorder}`,
-        color: G.blue,
-        fontSize: 12,
-        fontWeight: 600,
-      }}>
-        Apply Now
+      <button 
+        onClick={() => {
+          if (!isApplied) onApply?.(p);
+        }}
+        disabled={isApplied}
+        style={{
+          alignSelf: "flex-start",
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: `1px solid ${isApplied ? G.greenBorder : G.blueBorder}`,
+          color: isApplied ? G.green : G.blue,
+          background: isApplied ? G.greenGlow : "transparent",
+          fontSize: 12,
+          fontWeight: 600,
+          fontFamily: font.dm,
+          cursor: isApplied ? "default" : "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          transition: "all 0.22s ease",
+        }}
+      >
+        {isApplied ? (
+          <>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            Applied
+          </>
+        ) : (
+          "Apply Now"
+        )}
       </button>
     </div>
   );
@@ -1585,6 +1607,81 @@ export default function FreelancerDashboard({ name = "Freelancer", onSignOut }) 
   const [notifHov, setNotifHov] = useState(false);
   const [searchVal, setSearchVal] = useState("");
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const [exploreProjects, setExploreProjects] = useState(() => {
+    const saved = localStorage.getItem("customExploreProjects");
+    const parsed = saved ? JSON.parse(saved) : [];
+    const filteredStatic = EXPLORE_PROJECTS.filter(sp => !parsed.some(cp => cp.id === sp.id));
+    return [...parsed, ...filteredStatic];
+  });
+
+  const [myWorkProjects, setMyWorkProjects] = useState(() => {
+    const saved = localStorage.getItem("customMyWorkProjects");
+    const parsed = saved ? JSON.parse(saved) : [];
+    const filteredStatic = MY_WORK_PROJECTS.filter(sp => !parsed.some(cp => cp.id === sp.id));
+    return [...parsed, ...filteredStatic];
+  });
+
+  const [appliedIds, setAppliedIds] = useState(() => {
+    const saved = localStorage.getItem("customAppliedProjects");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    const loadFromStorage = () => {
+      const savedExplore = localStorage.getItem("customExploreProjects");
+      const parsedExplore = savedExplore ? JSON.parse(savedExplore) : [];
+      const filteredStaticExplore = EXPLORE_PROJECTS.filter(sp => !parsedExplore.some(cp => cp.id === sp.id));
+      setExploreProjects([...parsedExplore, ...filteredStaticExplore]);
+
+      const savedMyWork = localStorage.getItem("customMyWorkProjects");
+      const parsedMyWork = savedMyWork ? JSON.parse(savedMyWork) : [];
+      const filteredStaticMyWork = MY_WORK_PROJECTS.filter(sp => !parsedMyWork.some(cp => cp.id === sp.id));
+      setMyWorkProjects([...parsedMyWork, ...filteredStaticMyWork]);
+
+      const savedApplied = localStorage.getItem("customAppliedProjects");
+      setAppliedIds(savedApplied ? JSON.parse(savedApplied) : []);
+    };
+
+    loadFromStorage();
+    window.addEventListener("storage", loadFromStorage);
+    return () => window.removeEventListener("storage", loadFromStorage);
+  }, []);
+
+  const handleApplyProject = (proj) => {
+    // 1. Mark as applied
+    const savedApplied = localStorage.getItem("customAppliedProjects");
+    const parsedApplied = savedApplied ? JSON.parse(savedApplied) : [];
+    if (!parsedApplied.includes(proj.id)) {
+      const updatedApplied = [...parsedApplied, proj.id];
+      localStorage.setItem("customAppliedProjects", JSON.stringify(updatedApplied));
+      setAppliedIds(updatedApplied);
+    }
+
+    // 2. Transition/copy project to Freelancer's active "My Work" projects
+    const newMyWorkItem = {
+      id: proj.id,
+      title: proj.title,
+      client: proj.client,
+      escrow: proj.budget,
+      due: "Jun 30",
+      progress: 0,
+      milestone: "Initial Setup",
+      status: "active",
+      yield: "+0.00 Tokens",
+      isCustom: true
+    };
+    
+    const savedMyWork = localStorage.getItem("customMyWorkProjects");
+    const parsedMyWork = savedMyWork ? JSON.parse(savedMyWork) : [];
+    if (!parsedMyWork.some(item => item.id === proj.id)) {
+      const updatedMyWork = [newMyWorkItem, ...parsedMyWork];
+      localStorage.setItem("customMyWorkProjects", JSON.stringify(updatedMyWork));
+      
+      const filteredStaticMyWork = MY_WORK_PROJECTS.filter(sp => !updatedMyWork.some(cp => cp.id === sp.id));
+      setMyWorkProjects([...updatedMyWork, ...filteredStaticMyWork]);
+    }
+  };
   
   const firstName = name.trim().split(/\s+/)[0] || "Freelancer";
   const initials = name
@@ -1597,12 +1694,12 @@ export default function FreelancerDashboard({ name = "Freelancer", onSignOut }) 
     
   const normalizedSearch = searchVal.trim().toLowerCase();
   
-  const filteredExploreProjects = EXPLORE_PROJECTS.filter((p) =>
+  const filteredExploreProjects = exploreProjects.filter((p) =>
     [p.title, p.client, p.skills].some((value) => value.toLowerCase().includes(normalizedSearch))
   );
   
-  const filteredMyWorkProjects = MY_WORK_PROJECTS.filter((p) =>
-    [p.title, p.client, p.milestone, p.status].some((value) => value.toLowerCase().includes(normalizedSearch))
+  const filteredMyWorkProjects = myWorkProjects.filter((p) =>
+    [p.title, p.client, p.milestone || "", p.status || ""].some((value) => value.toLowerCase().includes(normalizedSearch))
   );
 
   return (
@@ -1938,7 +2035,13 @@ export default function FreelancerDashboard({ name = "Freelancer", onSignOut }) 
                       
                       <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "calc(100vh - 250px)", overflowY: "auto", paddingRight: 8 }}>
                         {filteredExploreProjects.map((p, i) => (
-                          <ExploreProjectCard key={p.id} p={p} delay={0.4 + i * 0.1} />
+                          <ExploreProjectCard 
+                            key={p.id} 
+                            p={p} 
+                            delay={0.4 + i * 0.1} 
+                            onApply={handleApplyProject}
+                            isApplied={appliedIds.includes(p.id)}
+                          />
                         ))}
                       </div>
                     </div>
