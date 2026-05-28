@@ -198,45 +198,45 @@ const MY_WORK_PROJECTS = [
     id: 1,
     title: "E-Commerce Redesign",
     client: "Nexus Digital",
-    escrow: "₹3,48,600",
+    escrow: "3,486 Tokens",
     due: "Jun 12",
     progress: 72,
     milestone: "UI Prototype",
     status: "active",
-    yield: "+₹1,527.20",
+    yield: "+15.27 Tokens",
   },
   {
     id: 2,
     title: "Mobile App MVP",
     client: "Startup Labs",
-    escrow: "₹7,05,500",
+    escrow: "7,055 Tokens",
     due: "Jun 28",
     progress: 38,
     milestone: "Backend API",
     status: "active",
-    yield: "+₹3,087.60",
+    yield: "+30.88 Tokens",
   },
   {
     id: 3,
     title: "Brand Identity Kit",
     client: "Bloom Co.",
-    escrow: "₹1,49,400",
+    escrow: "1,494 Tokens",
     due: "May 30",
     progress: 90,
     milestone: "Final Delivery",
     status: "review",
-    yield: "+₹655.70",
+    yield: "+6.56 Tokens",
   },
   {
     id: 4,
     title: "SaaS Landing Page",
     client: "Orbit Stack",
-    escrow: "₹2,07,500",
+    escrow: "2,075 Tokens",
     due: "Apr 18",
     progress: 100,
     milestone: "Project Completed",
     status: "completed",
-    yield: "+₹1,120.00",
+    yield: "+11.20 Tokens",
   },
 ];
 
@@ -245,7 +245,7 @@ const EXPLORE_PROJECTS = [
     id: 101,
     title: "Fintech Mobile App UI",
     client: "RupeeFlow",
-    budget: "₹4,80,000",
+    budget: "4,800 Tokens",
     duration: "6 weeks",
     skills: "Figma · Design System · Mobile UI",
   },
@@ -253,7 +253,7 @@ const EXPLORE_PROJECTS = [
     id: 102,
     title: "React Admin Dashboard",
     client: "CloudMint",
-    budget: "₹3,20,000",
+    budget: "3,200 Tokens",
     duration: "4 weeks",
     skills: "React · Charts · API Integration",
   },
@@ -261,7 +261,7 @@ const EXPLORE_PROJECTS = [
     id: 103,
     title: "Brand Identity Package",
     client: "Studio Bloom",
-    budget: "₹1,75,000",
+    budget: "1,750 Tokens",
     duration: "3 weeks",
     skills: "Logo · Typography · Brand Guide",
   },
@@ -269,7 +269,7 @@ const EXPLORE_PROJECTS = [
     id: 104,
     title: "E-commerce Checkout Revamp",
     client: "CartNest",
-    budget: "₹2,90,000",
+    budget: "2,900 Tokens",
     duration: "5 weeks",
     skills: "UX Audit · Prototyping · Conversion",
   },
@@ -1152,11 +1152,11 @@ function MessagingPanel({ name }) {
 /* ── SaaS Analytics Dashboard ── */
 function AnalyticsView() {
   const chartData = [
-    { month: 'Jan', earnings: 180000, yield: 950 },
-    { month: 'Feb', earnings: 240000, yield: 1300 },
-    { month: 'Mar', earnings: 380000, yield: 2100 },
-    { month: 'Apr', earnings: 290000, yield: 1500 },
-    { month: 'May', earnings: 450000, yield: 2450 }
+    { month: 'Jan', earnings: 1800, yield: 9.5 },
+    { month: 'Feb', earnings: 2400, yield: 13 },
+    { month: 'Mar', earnings: 3800, yield: 21 },
+    { month: 'Apr', earnings: 2900, yield: 15 },
+    { month: 'May', earnings: 4500, yield: 24.5 }
   ];
 
   const completionData = [
@@ -1216,9 +1216,9 @@ function AnalyticsView() {
         gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
         gap: 16
       }}>
-        <StatCard icon={<TrendingUp size={16} />} label="Total Earnings" value="₹12,03,500" sub="+15.4% vs last period" color="blue" delay={0.02} />
+        <StatCard icon={<TrendingUp size={16} />} label="Total Earnings" value="12,035 Tokens" sub="+15.4% vs last period" color="blue" delay={0.02} />
         <StatCard icon={<Briefcase size={16} />} label="Active Projects" value="3 Active" sub="2 building · 1 in review" color="blue" delay={0.08} />
-        <StatCard icon={<DollarSign size={16} />} label="Pending Escrow" value="₹2,50,000" sub="Milestones locked in vault" color="amber" delay={0.14} />
+        <StatCard icon={<DollarSign size={16} />} label="Pending Escrow" value="2,500 Tokens" sub="Milestones locked in vault" color="amber" delay={0.14} />
         <StatCard icon={<CheckCircle size={16} />} label="Completed Projects" value="47 Contracts" sub="100% Client satisfaction" color="green" delay={0.20} />
         <StatCard icon={<Star size={16} />} label="Client Rating" value="4.92 / 5.0" sub="Top Rated status active" color="amber" delay={0.26} />
         <StatCard icon={<Clock size={16} />} label="Hours Worked" value="1,280 Hrs" sub="Average 36.5 hrs/week" color="green" delay={0.32} />
@@ -1249,12 +1249,12 @@ function AnalyticsView() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(38,43,54,0.3)" />
                 <XAxis dataKey="month" stroke={G.text3} style={{ fontSize: 11 }} />
-                <YAxis stroke={G.text3} style={{ fontSize: 11 }} tickFormatter={(v) => `₹${v/1000}k`} />
+                <YAxis stroke={G.text3} style={{ fontSize: 11 }} tickFormatter={(v) => `${v.toLocaleString()} Tokens`} />
                 <RechartsTooltip 
                   contentStyle={{ background: G.surface, borderColor: G.border, borderRadius: 8 }}
                   labelStyle={{ color: G.text1, fontWeight: 600, fontSize: 12 }}
                   itemStyle={{ color: G.blue, fontSize: 12 }}
-                  formatter={(value) => [`₹${value.toLocaleString()}`, "Earnings"]}
+                  formatter={(value) => [`${value.toLocaleString()} Tokens`, "Earnings"]}
                 />
                 <Area type="monotone" dataKey="earnings" stroke={G.blue} strokeWidth={2} fillOpacity={1} fill="url(#colorEarnings)" />
               </AreaChart>
@@ -1827,8 +1827,8 @@ export default function FreelancerDashboard({ name = "Freelancer", onSignOut }) 
                     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
                     gap: 16, marginBottom: 36,
                   }}>
-                    <StatCard icon={Icon.wallet} label="Total Escrow" value="₹12,03,500" sub="Across 3 projects" color="blue" delay={0.05} />
-                    <StatCard icon={Icon.trending} label="Yield Earned" value="₹5,270.50" sub="This month · DeFi optimized" color="green" delay={0.12} />
+                    <StatCard icon={Icon.wallet} label="Total Escrow" value="12,035 Tokens" sub="Across 3 projects" color="blue" delay={0.05} />
+                    <StatCard icon={Icon.trending} label="Yield Earned" value="52.71 Tokens" sub="This month · DeFi optimized" color="green" delay={0.12} />
                     <StatCard icon={Icon.briefcase} label="Active Jobs" value="3" sub="2 ongoing · 1 in review" color="blue" delay={0.19} />
                     <StatCard icon={Icon.award} label="Reputation" value="4.92★" sub="47 completed contracts" color="amber" delay={0.26} />
                   </div>
@@ -1848,7 +1848,7 @@ export default function FreelancerDashboard({ name = "Freelancer", onSignOut }) 
                         Your escrow is working for you.&nbsp;
                       </span>
                       <span style={{ fontSize: 13, color: G.text2 }}>
-                        ₹12,03,500 locked across your contracts is earning <span style={{ color: G.green, fontWeight: 600 }}>+5.2% APY</span> in yield — fully accessible upon milestone approval.
+                        12,035 Tokens locked across your contracts is earning <span style={{ color: G.green, fontWeight: 600 }}>+5.2% APY</span> in yield — fully accessible upon milestone approval.
                       </span>
                     </div>
                     <div style={{ cursor: "pointer" }} onClick={() => setActiveNav("earnings")}>

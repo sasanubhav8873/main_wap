@@ -114,7 +114,7 @@ function LoadingScreen({ onBypass }) {
 export function App() {
   const [session, setSession] = useState(null)
   const [initializing, setInitializing] = useState(true)
-  const [activeRole, setActiveRole] = useState(null)
+  const [activeRole, setActiveRole] = useState(() => localStorage.getItem("activeRole") || null)
 
   useEffect(() => {
     // Safety net: Force clear the loading screen after 1.5 seconds if auth hangs (e.g. slow network)
@@ -146,6 +146,7 @@ export function App() {
       await logOutUser();
       setSession(null);
       setActiveRole(null);
+      localStorage.removeItem("activeRole");
     } catch (e) {
       console.error("Sign out process encountered an error:", e);
     }
@@ -171,7 +172,10 @@ export function App() {
             <button 
               type="button"
               className="sr-role-modal-btn sr-role-modal-btn--freelancer"
-              onClick={() => setActiveRole('freelancer')}
+              onClick={() => {
+                setActiveRole('freelancer');
+                localStorage.setItem("activeRole", "freelancer");
+              }}
             >
               <div className="sr-role-modal-icon">💼</div>
               <div className="sr-role-modal-btn-content">
@@ -182,7 +186,10 @@ export function App() {
             <button 
               type="button"
               className="sr-role-modal-btn sr-role-modal-btn--client"
-              onClick={() => setActiveRole('client')}
+              onClick={() => {
+                setActiveRole('client');
+                localStorage.setItem("activeRole", "client");
+              }}
             >
               <div className="sr-role-modal-icon">🛡️</div>
               <div className="sr-role-modal-btn-content">
@@ -196,11 +203,11 @@ export function App() {
     );
   }
 
-  if (activeRole === 'freelancer') {
+  if (session && activeRole === 'freelancer') {
     return <FreelancerDashboard name={session.name} onSignOut={handleSignOut} />
   }
 
-  if (activeRole === 'client') {
+  if (session && activeRole === 'client') {
     return <ClientDashboard name={session.name} onSignOut={handleSignOut} />
   }
 
