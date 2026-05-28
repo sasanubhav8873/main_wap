@@ -1,5 +1,12 @@
 import { useState } from 'react';
 import './styles.css';
+import { 
+  signInUser, 
+  signUpUser, 
+  signInWithGoogle, 
+  saveUserRole, 
+  isFirebaseConfigured 
+} from './firebase';
 
 /* ─── Inline SVG Icons ─── */
 const LogoMark = ({ size = 28 }) => (
@@ -137,14 +144,96 @@ export default function SignIn({ onSignIn }) {
   const [role, setRole]         = useState('freelancer');
   const [showPw, setShowPw]     = useState(false);
   const [loading, setLoading]   = useState(false);
+  
+  // Custom auth states
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [error, setError]       = useState(null);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [tempGoogleUser, setTempGoogleUser] = useState(null);
 
-  const handleSignIn = () => {
+  const handleAuth = async (e) => {
+    if (e) e.preventDefault();
     if (loading) return;
+    setError(null);
+
+    const emailTrimmed = email.trim();
+    const passwordTrimmed = password.trim();
+
+    if (!emailTrimmed || !passwordTrimmed) {
+      setError("Please fill in both email and password fields.");
+      return;
+    }
+
+    if (isSignUp && !name.trim()) {
+      setError("Please enter your name to register.");
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
+    try {
+      if (isSignUp) {
+        // Create user via Unified service
+        const user = await signUpUser(emailTrimmed, passwordTrimmed, name.trim(), role);
+        onSignIn?.(user);
+      } else {
+        // Sign in via Unified service
+        const user = await signInUser(emailTrimmed, passwordTrimmed);
+        onSignIn?.(user);
+      }
+    } catch (err) {
+      console.error("Auth process error:", err);
+      let msg = err.message;
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        msg = "Incorrect email address or password. Please verify and try again.";
+      } else if (err.code === 'auth/email-already-in-use') {
+        msg = "An account already exists for this email address.";
+      } else if (err.code === 'auth/weak-password') {
+        msg = "Your password is too weak. Please use at least 6 characters.";
+      } else if (err.code === 'auth/invalid-email') {
+        msg = "Please provide a valid email address.";
+      }
+      setError(msg);
+    } finally {
       setLoading(false);
-      onSignIn?.({ role, name: name.trim() || 'User' });
-    }, 900);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const user = await signInWithGoogle();
+      if (!user.role) {
+        // Google user doesn't have a role assigned yet! Show selector.
+        setTempGoogleUser(user);
+        setShowRoleModal(true);
+      } else {
+        onSignIn?.(user);
+      }
+    } catch (err) {
+      console.error("Google Authenticate failed:", err);
+      setError(err.message || "Failed to authenticate via Google.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRoleSelection = async (selectedRole) => {
+    if (!tempGoogleUser) return;
+    setLoading(true);
+    try {
+      await saveUserRole(tempGoogleUser.uid, tempGoogleUser.name, tempGoogleUser.email, selectedRole);
+      const finalSession = { ...tempGoogleUser, role: selectedRole };
+      setShowRoleModal(false);
+      setTempGoogleUser(null);
+      onSignIn?.(finalSession);
+    } catch (err) {
+      console.error("Role registration failed:", err);
+      setError("Unable to save account type selection.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -239,6 +328,14 @@ export default function SignIn({ onSignIn }) {
       <div className="sr-right">
         <div className="sr-signin-card">
 
+          {/* Sandbox Mock Banner if Firebase not active */}
+          {!isFirebaseConfigured && (
+            <div className="sr-mock-banner">
+              <span className="sr-mock-dot" />
+              <span>Sandbox Mode (Any password works)</span>
+            </div>
+          )}
+
           {/* Logo */}
           <div className="sr-card-logo">
             <LogoMark size={34} />
@@ -247,53 +344,48 @@ export default function SignIn({ onSignIn }) {
 
           {/* Header */}
           <div className="sr-card-header">
-            <h2 className="sr-card-title">Welcome back</h2>
-            <p className="sr-card-sub">Sign in to your secure workspace</p>
+            <h2 className="sr-card-title">{isSignUp ? 'Create an account' : 'Welcome back'}</h2>
+            <p className="sr-card-sub">
+              {isSignUp ? 'Get started in minutes with escrow protection' : 'Sign in to your secure workspace'}
+            </p>
           </div>
 
+          {/* Error Banner */}
+          {error && (
+            <div className="sr-error-banner" role="alert">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>{error}</span>
+            </div>
+          )}
+
           {/* Form fields */}
-          <div className="sr-form-stack">
+          <form className="sr-form-stack" onSubmit={handleAuth}>
 
-            {/* Account type */}
-            <div className="sr-field-group">
-              <span className="sr-field-label">Sign in as</span>
-              <div className="sr-role-switch" role="radiogroup" aria-label="Choose account type">
-                <button
-                  type="button"
-                  className={`sr-role-option${role === 'freelancer' ? ' sr-role-option--active' : ''}`}
-                  onClick={() => setRole('freelancer')}
-                  aria-pressed={role === 'freelancer'}
-                >
-                  Freelancer
-                </button>
-                <button
-                  type="button"
-                  className={`sr-role-option${role === 'client' ? ' sr-role-option--active' : ''}`}
-                  onClick={() => setRole('client')}
-                  aria-pressed={role === 'client'}
-                >
-                  Client
-                </button>
-              </div>
-            </div>
 
-            {/* Name */}
-            <div className="sr-field-group">
-              <label className="sr-field-label" htmlFor="name">
-                Your name
-              </label>
-              <div className="sr-input-shell">
-                <input
-                  id="name"
-                  className="sr-input"
-                  type="text"
-                  placeholder="Aryan"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  autoComplete="name"
-                />
+            {/* Name - only display in Sign Up mode */}
+            {isSignUp && (
+              <div className="sr-field-group">
+                <label className="sr-field-label" htmlFor="name">
+                  Your name
+                </label>
+                <div className="sr-input-shell">
+                  <input
+                    id="name"
+                    className="sr-input"
+                    type="text"
+                    placeholder="Aryan"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    autoComplete="name"
+                    required
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Email */}
             <div className="sr-field-group">
@@ -309,6 +401,7 @@ export default function SignIn({ onSignIn }) {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   autoComplete="email"
+                  required
                 />
               </div>
             </div>
@@ -317,7 +410,7 @@ export default function SignIn({ onSignIn }) {
             <div className="sr-field-group">
               <div className="sr-label-row">
                 <label className="sr-field-label" htmlFor="password">Password</label>
-                <a href="#" className="sr-forgot-link">Forgot password?</a>
+                {!isSignUp && <a href="#" className="sr-forgot-link" onClick={(e) => e.preventDefault()}>Forgot password?</a>}
               </div>
               <div className="sr-input-shell sr-input-shell--pw">
                 <input
@@ -327,9 +420,11 @@ export default function SignIn({ onSignIn }) {
                   placeholder="••••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  autoComplete="current-password"
+                  autoComplete={isSignUp ? "new-password" : "current-password"}
+                  required
                 />
                 <button
+                  type="button"
                   className="sr-eye-toggle"
                   onClick={() => setShowPw(v => !v)}
                   aria-label="Toggle password visibility"
@@ -341,8 +436,9 @@ export default function SignIn({ onSignIn }) {
 
             {/* Primary CTA */}
             <button
+              type="submit"
               className={`sr-cta-btn${loading ? ' sr-cta-btn--loading' : ''}`}
-              onClick={handleSignIn}
+              onClick={handleAuth}
               disabled={loading}
             >
               {loading ? (
@@ -350,12 +446,12 @@ export default function SignIn({ onSignIn }) {
               ) : (
                 <>
                   <LogoMark size={16} />
-                  <span>Sign In Securely</span>
+                  <span>{isSignUp ? 'Create Account Securely' : 'Sign In Securely'}</span>
                 </>
               )}
             </button>
 
-          </div>
+          </form>
 
           {/* Divider */}
           <div className="sr-divider">
@@ -366,24 +462,58 @@ export default function SignIn({ onSignIn }) {
 
           {/* Social sign-in */}
           <div className="sr-social-row">
-            <button className="sr-social-btn">
+            <button 
+              type="button" 
+              className="sr-social-btn" 
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+            >
               <GoogleIcon />
               <span>Google</span>
             </button>
-            <button className="sr-social-btn">
+            <button type="button" className="sr-social-btn" disabled>
               <GitHubIcon />
               <span>GitHub</span>
             </button>
-            <button className="sr-social-btn sr-social-btn--apple">
+            <button type="button" className="sr-social-btn sr-social-btn--apple" disabled>
               <AppleIcon />
               <span>Apple</span>
             </button>
           </div>
 
-          {/* Sign up link */}
+          {/* Sign up toggle link */}
           <p className="sr-signup-line">
-            New here?{' '}
-            <a href="#" className="sr-signup-anchor">Create account</a>
+            {isSignUp ? (
+              <>
+                Already have an account?{' '}
+                <a 
+                  href="#" 
+                  className="sr-signup-anchor" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsSignUp(false);
+                    setError(null);
+                  }}
+                >
+                  Sign in
+                </a>
+              </>
+            ) : (
+              <>
+                New here?{' '}
+                <a 
+                  href="#" 
+                  className="sr-signup-anchor" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsSignUp(true);
+                    setError(null);
+                  }}
+                >
+                  Create account
+                </a>
+              </>
+            )}
           </p>
 
           {/* Security footer */}
@@ -394,6 +524,45 @@ export default function SignIn({ onSignIn }) {
 
         </div>
       </div>
+
+      {/* ── Google OAuth Role Selection Modal ── */}
+      {showRoleModal && (
+        <div className="sr-role-modal-overlay">
+          <div className="sr-role-modal">
+            <div className="sr-role-modal-logo">
+              <LogoMark size={36} />
+            </div>
+            <h3 className="sr-role-modal-title">Choose Account Type</h3>
+            <p className="sr-role-modal-sub">
+              To set up your secure workspace, please select your primary role.
+            </p>
+            <div className="sr-role-modal-options">
+              <button 
+                type="button"
+                className="sr-role-modal-btn sr-role-modal-btn--freelancer"
+                onClick={() => handleRoleSelection('freelancer')}
+              >
+                <div className="sr-role-modal-icon">💼</div>
+                <div className="sr-role-modal-btn-content">
+                  <span className="sr-role-modal-btn-title">Freelancer</span>
+                  <span className="sr-role-modal-btn-desc">Work on contracts & earn protected yield</span>
+                </div>
+              </button>
+              <button 
+                type="button"
+                className="sr-role-modal-btn sr-role-modal-btn--client"
+                onClick={() => handleRoleSelection('client')}
+              >
+                <div className="sr-role-modal-icon">🛡️</div>
+                <div className="sr-role-modal-btn-content">
+                  <span className="sr-role-modal-btn-title">Client</span>
+                  <span className="sr-role-modal-btn-desc">Deposit escrow & manage milestones</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
